@@ -1,0 +1,38 @@
+---
+title: "Report"
+author: "Murilo Miranda"
+date: "1/30/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+# Look at the raw data. 
+The data has empty values and semicolon is used to separated into different columns. I used read.csv2 function because the separator character is the semicolon,but I could use read.csv and change the sep-argument to ";". To solve the problem with empty values, I used na.strings argument and gave as values empty value and single space. Now, when read.csv2 sees empty or single space it counts as missing values.
+
+```{r}
+data <- read.csv2("surveyBelkinElago.csv", na.strings = c("", " "))
+head(data)
+```
+
+
+# Check data types & missing values. 
+Think about what each variable’s data type should be and make the appropriate changes. Spot missing values: are they missing at random?
+
+# Visualise the distributions of the variables. 
+Are they how you expected them to be? Can you spot any outliers?
+
+# Explore relationships between variables. 
+Correlation matrices will give you a quick overview of linear relationships between numeric variables, but you might miss non-linear relationships. Scatter-plots are the most granular visualisations: use them whenever you can! Play with other visualisations for categorical variables.
+
+# Formulate questions and build plots that answer them. 
+Build a narrative out of your findings
