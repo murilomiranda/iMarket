@@ -1,7 +1,7 @@
 ---
-title: "Report"
+title: "Exploratory Data Analysis"
 author: "Murilo Miranda"
-date: "1/30/2020"
+date: '`r format(Sys.Date(), "%Y-%B-%d")`'
 output:
   html_document:
     df_print: paged
@@ -16,7 +16,7 @@ library(dplyr)
 library(ggplot2)
 ```
 
-# Look at the raw data. 
+# Look at the raw data
 The data has empty values and semicolon is used to separated into different columns. I used read.csv2 function because the separator character is the semicolon,but I could use read.csv and change the sep-argument to ";". To solve the problem with empty values, I used na.strings argument and gave as values empty value and single space. Now, when read.csv2 sees empty or single space it counts as missing values.
 
 ```{r}
@@ -25,14 +25,198 @@ head(data)
 ```
 
 
-# Check data types & missing values. 
-Think about what each variable’s data type should be and make the appropriate changes. Spot missing values: are they missing at random?
+### Check data types & missing values
+I think elevel, car and zipcode are factors, so I converted them. There are 5000 missing values in the brand feature.
 
-# Visualise the distributions of the variables. 
-Are they how you expected them to be? Can you spot any outliers?
+```{r}
+str(data)
+```
 
-# Explore relationships between variables. 
-Correlation matrices will give you a quick overview of linear relationships between numeric variables, but you might miss non-linear relationships. Scatter-plots are the most granular visualisations: use them whenever you can! Play with other visualisations for categorical variables.
+### Convert data types
+```{r}
+data$elevel <- as.factor(data$elevel)
+data$car <- as.factor(data$car)
+data$zipcode <- as.factor(data$zipcode)
+summary(data)
+```
 
-# Formulate questions and build plots that answer them. 
-Build a narrative out of your findings
+### Check duplicate observations
+```{r}
+anyDuplicated(data)
+```
+
+
+### Are missing values at random?
+A method I use is a shadow matrix, in which the dataset consists of indicator features where a 0 is given if a value is present, and 1 if it isn't. Correlating these with each other and the original data can help determine if features tend to be missing together (missing at random - MAR) or not (missing completely at random - MCAR). 
+
+```{r}
+# Elements of x are 1 if a value in the data is missing and 0 if non-missing.
+x <- as.data.frame(abs(is.na(data)))
+
+# Extracting features that have some missing values.
+y <- x[which(sapply(x, sd) > 0)]
+```
+
+I selected the features with numerical values, then their correlations were verified.
+```{r}
+cor(data[, c("salary","age","credit")], y, use="pairwise.complete.obs")
+```
+
+The correlations shows that they are missing at random.
+
+# Visualise the distributions of the variables.
+
+```{r, message=FALSE}
+ggplot(data, aes(age)) + geom_histogram()
+```
+
+```{r}
+p <- ggplot(data, aes(salary, credit)) + geom_point()
+ggExtra::ggMarginal(p, type = "histogram")
+```
+
+```{r}
+ggplot(data, aes(elevel, salary)) + geom_boxplot()
+```
+
+```{r}
+ggplot(data, aes(elevel, credit)) + geom_boxplot()
+```
+
+```{r}
+ggplot(data, aes(zipcode, salary)) + geom_boxplot()
+```
+
+```{r}
+ggplot(data, aes(zipcode, credit)) + geom_boxplot()
+```
+
+```{r}
+ggplot(data, aes(car, salary)) + geom_boxplot()
+```
+
+```{r}
+ggplot(data, aes(car, credit)) + geom_boxplot()
+```
+
+# Remove NA's in brand feature
+```{r}
+#Drops any rows with missing values and omits them forever
+dataSet <- na.omit(data)
+summary(dataSet)
+```
+
+```{r}
+cor(dataSet[, c("salary","age","credit")])
+```
+# Visualise the distributions of the variables.
+
+```{r, message=FALSE}
+ggplot(dataSet, aes(age)) + geom_histogram()
+```
+
+```{r}
+p <- ggplot(dataSet, aes(salary, credit)) + geom_point()
+ggExtra::ggMarginal(p, type = "histogram")
+```
+
+```{r}
+ggplot(dataSet, aes(elevel, salary)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(elevel, credit)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, salary)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, credit)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(car, salary)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(car, credit)) + geom_boxplot()
+```
+
+
+## Models
+Ho: higher elevel and age, higher salary
+```{r}
+model <- lm(salary ~ age + elevel, data = dataSet)
+
+summary(model)
+```
+
+## brand effect
+```{r, message=FALSE}
+ggplot(dataSet, aes(age, fill = brand)) + geom_histogram()
+```
+
+```{r, message=FALSE}
+ggplot(dataSet, aes(salary, fill = brand)) + geom_histogram()
+```
+
+```{r}
+p <- ggplot(dataSet, aes(salary, credit, color = brand)) + geom_point()
+ggExtra::ggMarginal(p, type = "histogram")
+```
+
+```{r}
+ggplot(dataSet, aes(elevel, salary, color = brand)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(elevel, credit, color = brand)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, salary, color = brand)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, credit, color = brand)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(car, salary, color = brand)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(car, credit, color = brand)) + geom_boxplot()
+```
+
+## elevel effect
+```{r, message=FALSE}
+ggplot(dataSet, aes(age, fill = elevel)) + geom_histogram()
+```
+
+```{r, message=FALSE}
+ggplot(dataSet, aes(salary, fill = elevel)) + geom_histogram()
+```
+
+```{r}
+p <- ggplot(dataSet, aes(salary, credit, color = elevel)) + geom_point()
+ggExtra::ggMarginal(p, type = "histogram")
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, salary, color = elevel)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, credit, color = elevel)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(car, salary, color = elevel)) + geom_boxplot()
+```
+
+```{r}
+ggplot(dataSet, aes(car, credit, color = elevel)) + geom_boxplot()
+```
