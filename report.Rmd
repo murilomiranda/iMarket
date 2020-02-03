@@ -1,10 +1,12 @@
 ---
-title: "Exploratory Data Analysis"
+title: 'Belkin vs. Elago: Exploratory Data Analysis'
 author: "Murilo Miranda"
-date: '`r format(Sys.Date(), "%Y-%B-%d")`'
+date: "`r format(Sys.Date(), "%Y-%B-%d")`"
 output:
   html_document:
     df_print: paged
+  pdf_document: default
+version: '0.1'
 ---
 
 ```{r setup, include=FALSE}
@@ -45,6 +47,10 @@ summary(data)
 anyDuplicated(data)
 ```
 
+### Check correlation between numeric features
+```{r}
+cor(data[, c("salary","age","credit")])
+```
 
 ### Are missing values at random?
 A method I use is a shadow matrix, in which the dataset consists of indicator features where a 0 is given if a value is present, and 1 if it isn't. Correlating these with each other and the original data can help determine if features tend to be missing together (missing at random - MAR) or not (missing completely at random - MCAR). 
@@ -62,9 +68,13 @@ I selected the features with numerical values, then their correlations were veri
 cor(data[, c("salary","age","credit")], y, use="pairwise.complete.obs")
 ```
 
+```{r, echo=FALSE}
+rm(x, y)
+```
+
 The correlations shows that they are missing at random.
 
-# Visualise the distributions of the variables.
+# Visualise the distributions of the variables
 
 ```{r, message=FALSE}
 ggplot(data, aes(age)) + geom_histogram()
@@ -103,101 +113,123 @@ ggplot(data, aes(car, credit)) + geom_boxplot()
 ```{r}
 #Drops any rows with missing values and omits them forever
 dataSet <- na.omit(data)
+```
+
+### Age and salary are discretized
+```{r}
+dataSet$ageCat <- cut(dataSet$age, 
+                      breaks=c(-Inf, 40, 60, Inf), 
+                      labels=c("young","adult","old"))
+dataSet$salCat <- cut(dataSet$salary,
+                      breaks = c(-Inf, 63333.33, 106666.67, Inf),
+                      labels = c("low", "middle","high"))
 summary(dataSet)
 ```
 
 ```{r}
 cor(dataSet[, c("salary","age","credit")])
 ```
-# Visualise the distributions of the variables.
 
+### Comparing some features with and without NA's
+```{r table, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+require(kableExtra)
+
+dt <- data.frame(rbind(
+  salary = c(19583, 161748, 87244, 20000, 150000, 84969),
+  age    = c(20   ,   80  ,   50 ,  20  ,   80  ,   50),
+  credit = c(423.7,  849.0, 638.9, 423.7,  849.0,  635.5)))
+colnames(dt) <- c("Min", "Max", "Median", "Min", "Max", "Median")
+
+kable(dt) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  add_header_above(c(" " = 1, "With NA's" = 3, "Without NA's" = 3))
+```
+
+# Visualise the distributions of the variables
+
+## Brand effect
+
+### Age
 ```{r, message=FALSE}
-ggplot(dataSet, aes(age)) + geom_histogram()
+ggplot(dataSet, aes(age, fill = brand)) + geom_histogram() + facet_grid(. ~ brand)
 ```
 
 ```{r}
-p <- ggplot(dataSet, aes(salary, credit)) + geom_point()
-ggExtra::ggMarginal(p, type = "histogram")
+ggplot(dataSet, aes(ageCat, fill = brand)) + geom_bar(position = "dodge")
 ```
 
 ```{r}
-ggplot(dataSet, aes(elevel, salary)) + geom_boxplot()
+ggplot(dataSet, aes(elevel, age, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r}
-ggplot(dataSet, aes(elevel, credit)) + geom_boxplot()
+ggplot(dataSet, aes(zipcode, age, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r}
-ggplot(dataSet, aes(zipcode, salary)) + geom_boxplot()
+ggplot(dataSet, aes(car, age, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
-```{r}
-ggplot(dataSet, aes(zipcode, credit)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(car, salary)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(car, credit)) + geom_boxplot()
-```
-
-
-## Models
-Ho: higher elevel and age, higher salary
-```{r}
-model <- lm(salary ~ age + elevel, data = dataSet)
-
-summary(model)
-```
-
-## brand effect
-```{r, message=FALSE}
-ggplot(dataSet, aes(age, fill = brand)) + geom_histogram()
-```
-
-```{r, message=FALSE}
-ggplot(dataSet, aes(salary, fill = brand)) + geom_histogram()
-```
-
+### Salary
 ```{r}
 p <- ggplot(dataSet, aes(salary, credit, color = brand)) + geom_point()
 ggExtra::ggMarginal(p, type = "histogram")
 ```
 
-```{r}
-ggplot(dataSet, aes(elevel, salary, color = brand)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(elevel, credit, color = brand)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(zipcode, salary, color = brand)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(zipcode, credit, color = brand)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(car, salary, color = brand)) + geom_boxplot()
-```
-
-```{r}
-ggplot(dataSet, aes(car, credit, color = brand)) + geom_boxplot()
-```
-
-## elevel effect
 ```{r, message=FALSE}
-ggplot(dataSet, aes(age, fill = elevel)) + geom_histogram()
+ggplot(dataSet, aes(salary, fill = brand)) + geom_histogram() + facet_grid(. ~ brand)
+```
+
+```{r}
+ggplot(dataSet, aes(salCat, fill = brand)) + geom_bar(position = "dodge")
+```
+
+```{r}
+ggplot(dataSet, aes(elevel, salary, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
+```
+
+```{r}
+ggplot(dataSet, aes(zipcode, salary, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
+```
+
+```{r}
+ggplot(dataSet, aes(car, salary, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
+```
+
+### Credit
+```{r, message=FALSE}
+ggplot(dataSet, aes(credit, fill = brand)) + geom_histogram() + facet_grid(. ~ brand)
+```
+
+```{r}
+ggplot(dataSet, aes(elevel, credit, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
+```
+
+
+```{r}
+ggplot(dataSet, aes(zipcode, credit, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
+```
+
+```{r}
+ggplot(dataSet, aes(car, credit, color = brand)) + geom_boxplot() + facet_grid(. ~ brand)
+```
+
+## Education level effect
+
+```{r, message=FALSE}
+ggplot(dataSet, aes(age, fill = elevel)) + geom_histogram() + facet_grid(. ~ elevel)
 ```
 
 ```{r, message=FALSE}
-ggplot(dataSet, aes(salary, fill = elevel)) + geom_histogram()
+ggplot(dataSet, aes(ageCat, fill = elevel)) + geom_bar(position = "dodge")
+```
+
+```{r, message=FALSE}
+ggplot(dataSet, aes(salary, fill = elevel)) + geom_histogram() + facet_grid(. ~ elevel)
+```
+
+```{r, message=FALSE}
+ggplot(dataSet, aes(salCat, fill = elevel)) + geom_bar(position = "dodge")
 ```
 
 ```{r}
@@ -206,17 +238,36 @@ ggExtra::ggMarginal(p, type = "histogram")
 ```
 
 ```{r}
-ggplot(dataSet, aes(zipcode, salary, color = elevel)) + geom_boxplot()
+ggplot(dataSet, aes(zipcode, salary, color = elevel)) + geom_boxplot() + facet_grid(. ~ elevel)
 ```
 
 ```{r}
-ggplot(dataSet, aes(zipcode, credit, color = elevel)) + geom_boxplot()
+ggplot(dataSet, aes(zipcode, credit, color = elevel)) + geom_boxplot() + facet_grid(. ~ elevel)
 ```
 
 ```{r}
-ggplot(dataSet, aes(car, salary, color = elevel)) + geom_boxplot()
+ggplot(dataSet, aes(car, salary, color = elevel)) + geom_boxplot() + facet_grid(. ~ elevel)
 ```
 
 ```{r}
-ggplot(dataSet, aes(car, credit, color = elevel)) + geom_boxplot()
+ggplot(dataSet, aes(car, credit, color = elevel)) + geom_boxplot() + facet_grid(. ~ elevel)
+```
+
+## Models
+H: higher education level and age, higher salary
+```{r}
+model <- lm(salary ~ age + elevel, data = dataSet)
+
+summary(model)
+```
+
+```{r}
+ggplot(dataSet, aes(age, salary, color = brand)) + geom_point() + facet_grid(. ~ brand+ elevel)
+```
+
+H: higher salary, higher credit
+```{r}
+model <- lm(credit ~ salary, data = dataSet)
+
+summary(model)
 ```
