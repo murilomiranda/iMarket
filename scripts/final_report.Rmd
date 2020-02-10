@@ -32,6 +32,7 @@ st_css()
 
 ```{r, message = FALSE}
 library(sjPlot)
+library(kableExtra)
 library(forcats)
 library(dplyr)
 library(ggplot2)
@@ -125,7 +126,6 @@ dataSet <- data %>% filter(brand != "No Response") %>% droplevels()
 
 ## Comparing some variables with and without **No Response**
 ```{r table, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
-require(kableExtra)
 
 dt <- data.frame(rbind(
   salary = c(19583, 161748, 87244, 20000, 150000, 84969),
