@@ -1,5 +1,5 @@
 ---
-title: 'Belkin vs. Elago'
+title: $\color{red}{\text{Belkin red}}$ " vs. "$\color{blue}{\text{Elago blue}}$
 subtitle: 'Exploratory Data Analysis'
 author: "Murilo Miranda"
 date: "`r format(Sys.Date(), '%Y-%B-%d')`"
@@ -31,6 +31,8 @@ st_css()
 library(dplyr)
 library(ggplot2)
 library(RColorBrewer)
+
+colors <- brewer.pal(12, "Paired")
 ```
 
 # Loading data
@@ -99,46 +101,40 @@ dfSummary(data, plain.ascii = FALSE, style = "grid",
           graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp")
 ```
 
-```{r, message=FALSE, echo=FALSE}
-ggplot(data, aes(age)) + geom_histogram(bins = 35)
+```{r, message=FALSE, echo=FALSE, include=FALSE}
+ggplot(data, aes(age)) + geom_histogram()
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 p <- ggplot(data, aes(salary, credit)) + geom_point()
 ggExtra::ggMarginal(p, type = "histogram")
 ```
 
 ```{r, echo=FALSE}
-ggplot(data, aes(elevel, salary)) + geom_boxplot()
+ggplot(data, aes(elevel, salary)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r, echo=FALSE}
-ggplot(data, aes(elevel, credit)) + geom_boxplot()
+ggplot(data, aes(elevel, credit)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r, echo=FALSE}
-ggplot(data, aes(zipcode, salary)) + geom_boxplot()
+ggplot(data, aes(zipcode, salary)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r, echo=FALSE}
-ggplot(data, aes(zipcode, credit)) + geom_boxplot()
+ggplot(data, aes(zipcode, credit)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r, echo=FALSE}
-ggplot(data, aes(car, salary)) + geom_boxplot()
+ggplot(data, aes(car, salary)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ```{r, echo=FALSE}
-ggplot(data, aes(car, credit)) + geom_boxplot()
+ggplot(data, aes(car, credit)) + geom_boxplot() + facet_grid(. ~ brand)
 ```
 
 ## Salary distribution by brand preference
-
-```{r, echo=FALSE}
-colors <- brewer.pal(12, "Paired")
-```
-
-
 ```{r, echo=FALSE}
 hgram <- ggplot(data, aes(salary, fill = brand)) + geom_histogram(bins = 100) +
   scale_fill_manual(values = c(colors[8], colors[6], colors[10])) +
@@ -314,7 +310,7 @@ summary(model)
 ```
 
 ```{r, echo=FALSE}
-ggplot(dataSet, aes(age, salary, color = brand)) + geom_point() + facet_grid(. ~ brand+ elevel)
+ggplot(dataSet, aes(age, salary, color = brand)) + geom_point() + facet_grid(. ~ brand + elevel)
 ```
 
 H: higher salary, higher credit

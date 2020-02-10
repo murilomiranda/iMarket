@@ -1,0 +1,245 @@
+---
+title: $\color{#E31A1C}{\text{Belkin}}$ vs. $\color{#6A3D9A}{\text{Elago}}$
+subtitle: 'Exploratory Data Analysis'
+author: "Murilo Miranda"
+date: "`r format(Sys.Date(), '%Y-%B-%d')`"
+output:
+  html_document:
+    toc: true # table of content true
+    toc_float: true
+    code_folding: hide
+    toc_depth: 3  # upto three depths of headings (specified by #, ## and ###)
+    theme: united
+    highlight: breezedark  # specifies the syntax highlighting style
+    #css: styles.css
+  pdf_document: default
+version: '0.3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment=NA, prompt=FALSE, cache=FALSE, echo=TRUE)
+
+library(summarytools)
+st_options(plain.ascii   = FALSE,       # One of the essential settings
+           style         = "rmarkdown", # Idem.
+           dfSummary.silent  = TRUE,# Suppresses messages about temporary files
+           footnote      = NA,          # Keeping the results minimalistic
+           subtitle.emphasis = FALSE)   # For the vignette theme, this gives
+                                            # much better results. Your mileage may vary.
+
+st_css()
+```
+
+```{r, message = FALSE}
+library(sjPlot)
+library(forcats)
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+
+```{r, message = FALSE, echo=FALSE}
+colors <- brewer.pal(12, "Paired")
+```
+
+# Loading data
+The data has empty values and the columns are separated by semicolon. **read.csv2** function was used because it has semi-colon as default sep-argument. To solve the problem with empty values, na.strings argument was used with empty value and single space.
+
+```{r, echo=FALSE}
+data <- read.csv2("data/surveyBelkinElago.csv", na.strings = c("", " "))
+
+str(data)
+```
+
+# Preprocessing
+## Check data types
+In the data-set elevel, car and zipcode are integers. In reality, they are categorical variables, so they are converted into factor. The missing values are converted into 'No Response'.
+
+## Data conversions
+```{r, echo=FALSE}
+data$elevel <- as.factor(data$elevel)
+levels(data$elevel) <- c("HSch", "Prof", "Coll", "Mast")
+data$elevel <- reorder(data$elevel, data$elevel, FUN = function(x) -length(x))
+
+data$car <- as.factor(data$car)
+levels(data$car) <- c("BMW", "Tesl", "Volk", "Fiat", "Chry", "Cit1", "Ford", "Hond", "Opel", "Cit2", "Pors", "Peug", "Audi", "Merc", "Kia", "Niss", "Hyun", "Rena", "Toyo", "Daci")
+data$car <- reorder(data$car, data$car, FUN = function(x) -length(x))
+
+data$zipcode <- as.factor(data$zipcode)
+levels(data$zipcode) <- c("C", "EC", "E", "NE", "N", "NW", "SE", "SW", "W")
+data$zipcode <- reorder(data$zipcode, data$zipcode, FUN = function(x) -length(x))
+
+# convert NA to 'No Response' in the brand variable
+levels(data$brand) <- c(levels(data$brand), "No Response")
+data$brand[is.na(data$brand)] <- "No Response" 
+data$brand <- factor(data$brand, levels = c("No Response", "Belkin", "Elago"))
+
+head(data)
+```
+
+## Check duplicate observations
+```{r, echo=FALSE}
+anyDuplicated(data)
+```
+
+## Correlation between variables
+```{r, echo=FALSE}
+cor(data[, c("salary","age","credit")])
+```
+
+### Are missing values at random?
+A method I use is a shadow matrix, in which the data-set consists of indicator features where a 0 is given if a value is present, and 1 if it isn't. Correlating these with each other and the original data can help determine if features tend to be missing together (missing at random - MAR) or not (missing completely at random - MCAR). 
+
+```{r, echo=FALSE}
+# Elements of x are 1 if a value in the data is missing and 0 if non-missing.
+x <- as.data.frame(abs(data$brand == "No Response"))
+
+# Extracting features that have some missing values.
+y <- x[which(sapply(x, sd) > 0)]
+colnames(y) <- "No Response"
+```
+
+I selected the features with numerical values, then their correlations were verified.
+```{r, echo=FALSE}
+cor(data[, c("salary","age","credit")], y, use="pairwise.complete.obs")
+```
+
+```{r, echo=FALSE}
+rm(x, y)
+```
+
+The correlations shows that they are missing at random.
+
+## Distributions of the variables
+
+```{r, echo=FALSE, results='asis'}
+dfSummary(data, plain.ascii = FALSE, style = "grid", 
+          graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp")
+```
+
+# Remove **No Response** observations in brand variable
+```{r, echo=FALSE}
+dataSet <- data %>% filter(brand != "No Response") %>% droplevels()
+```
+
+## Comparing some variables with and without **No Response**
+```{r table, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+require(kableExtra)
+
+dt <- data.frame(rbind(
+  salary = c(19583, 161748, 87244, 20000, 150000, 84969),
+  age    = c(20   ,   80  ,   50 ,  20  ,   80  ,   50),
+  credit = c(423.7,  849.0, 638.9, 423.7,  849.0,  635.5)))
+colnames(dt) <- c("Min", "Max", "Median", "Min", "Max", "Median")
+
+kable(dt) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  add_header_above(c(" " = 1, "With 'No Response'" = 3, "Without 'No Response'" = 3))
+```
+
+## Correlation
+```{r, echo=FALSE}
+cor(dataSet[, c("salary","age","credit")])
+```
+
+## Distributions of the variables
+
+```{r, echo=FALSE, results='asis'}
+dfSummary(dataSet, plain.ascii = FALSE, style = "grid", 
+          graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp")
+```
+
+# Results
+
+```{r, echo=FALSE}
+hgram <- ggplot(dataSet, aes(salary, fill = brand)) + geom_histogram(bins = 100) +
+  scale_fill_manual(values = c(colors[6], colors[10])) +
+  geom_vline(aes(xintercept = median(data$salary)), linetype = "dashed") +
+  labs(
+    x = "",
+    y = "",
+    title = "Salary distribution by brand preference",
+    subtitle = "Salaries are expressed in yearly thousands of euros",
+    caption = "Data source: Ubiqum 2019"
+  ) +
+  geom_text(x = 80000, y = 70, label = "Belkin", color = "white") +
+  geom_text(x = 40000, y = 30, label = "Elago", color = "white")
+ 
+hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
+              plot.title = element_text(hjust = -0.15),
+              plot.subtitle = element_text(hjust = -0.17),
+              legend.position = "none")
+```
+
+```{r, echo=FALSE}
+hgram <- ggplot(dataSet, aes(age, fill = brand)) + geom_histogram(bins = 31) +
+  scale_fill_manual(values = c(colors[6], colors[10])) +
+  geom_vline(aes(xintercept = median(dataSet$age)), linetype = "dashed") +
+  labs(
+    x = "",
+    y = "",
+    title = "Age distribution by brand preference",
+    subtitle = " ",
+    caption = "Data source: Ubiqum 2019"
+  ) +
+  geom_text(x = 65, y = 220, label = "Belkin", color = "white") +
+  geom_text(x = 30, y = 100, label = "Elago", color = "white")
+ 
+hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
+              plot.title = element_text(hjust = -0.15),
+              plot.subtitle = element_text(hjust = -0.17),
+              legend.position = "none")
+```
+
+## Model Hypothesis Testing
+
+The null hypothesis ($H_0$): age and educational level don't affect salary, and the alternative hypothesis ($H_1$): age or educational level  do affect the salary amount.
+
+```{r, echo=FALSE}
+model <- lm(salary ~ age + elevel, data = dataSet)
+
+tab_model(
+  model,
+  pred.labels = c("Intercept", "Age", "College Degree", "High School Degree", "Master's Degree"),
+  string.ci = "Conf. Int (95%)",
+  string.p = "P-Value"
+)
+```
+
+<br>
+```{r, echo=FALSE}
+global_labeller <- labeller(
+  elevel = c(`HSch` = "< High School\nDegree", `Prof` = "Professional\nDiploma", `Coll` = "College\nDegree", `Mast` = ">= Master's\nDegree"),
+  brand = c(`Belkin` = "", `Elago` = "")
+)
+
+dataSet %>%
+  mutate(elevel = fct_reorder(elevel, salary, .fun='median')) %>%
+  ggplot(aes(x = age, y = salary, color = brand)) + geom_point() + 
+  scale_color_manual(values = c(colors[6], colors[10])) + 
+  scale_x_continuous(limits = c(20, 80), breaks = c(20, 50, 80), expand = c(0.1, 0.1)) +
+  labs(
+    x = "",
+    y = "",
+    title = "Salary distribution by educational level and age separated by brand preference",
+    subtitle = "High educational level helps to earn more, age doesn't",
+    caption = "Data source: Ubiqum 2019"
+  ) +
+  facet_grid(. ~ brand + elevel, labeller = global_labeller) + 
+  theme(panel.background = element_rect(fill = "white", colour = "white"),
+        strip.background = element_blank(),
+        plot.title = element_text(hjust = -15.),
+        plot.subtitle = element_text(hjust = -.25),
+        legend.position = "none")
+```
+
+# Conclusion
+
+Age and salary are uniformly distributed and credit is normally distributed. Salary and credit have a high correlation ($\rho$ = 0.795). They are also correlated with educational level, that is, people with a high level of education receive high salary and credit in banks and people with a low level of education receive low salary and credit.
+
+There are more people with **Professional Diploma**, followed by **College Degree**, **High School Degree or lower**, finnally, **Master's Degree or Higher**. Age at educational level is equally distributed.
+
+Older people and people with intermediate income are associated with the $\color{#E31A1C}{\text{Belkin}}$ brand and younger people and people with low or high income are associated with the $\color{#6A3D9A}{\text{Elago}}$ brand.
+
+<br>

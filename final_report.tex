@@ -1,0 +1,695 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={\textbackslash color\{\#E31A1C\}\{\textbackslash text\{Belkin\}\} vs.~\textbackslash color\{\#6A3D9A\}\{\textbackslash text\{Elago\}\}},
+  pdfauthor={Murilo Miranda},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{longtable,booktabs}
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+
+\title{\(\color{#E31A1C}{\text{Belkin}}\) vs.~\(\color{#6A3D9A}{\text{Elago}}\)}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{Exploratory Data Analysis}
+\author{Murilo Miranda}
+\date{2020-February-05}
+
+\begin{document}
+\maketitle
+
+\hypertarget{loading-data}{%
+\section{Loading data}\label{loading-data}}
+
+The data has empty values and the columns are separated by semicolon.
+\textbf{read.csv2} function was used because it has semi-colon as
+default sep-argument. To solve the problem with empty values, na.strings
+argument was used with empty value and single space.
+
+\begin{verbatim}
+'data.frame':   15000 obs. of  7 variables:
+ $ salary : num  113771 139183 101967 71761 124203 ...
+ $ age    : int  59 67 53 26 46 46 34 67 71 43 ...
+ $ elevel : int  3 3 2 2 3 2 2 3 2 3 ...
+ $ car    : int  14 16 3 8 9 5 19 4 19 20 ...
+ $ zipcode: int  6 5 8 5 0 6 8 1 4 1 ...
+ $ credit : num  738 679 603 654 627 ...
+ $ brand  : Factor w/ 2 levels "Belkin","Elago": 1 2 1 1 NA 2 2 NA 1 NA ...
+\end{verbatim}
+
+\hypertarget{preprocessing}{%
+\section{Preprocessing}\label{preprocessing}}
+
+\hypertarget{check-data-types}{%
+\subsection{Check data types}\label{check-data-types}}
+
+In the data-set elevel, car and zipcode are integers. In reality, they
+are categorical variables, so they are converted into factor. The
+missing values are converted into `No Response'.
+
+\hypertarget{data-conversions}{%
+\subsection{Data conversions}\label{data-conversions}}
+
+\begin{verbatim}
+     salary age elevel  car zipcode credit       brand
+1 113770.67  59   Coll Merc      SE 737.93      Belkin
+2 139182.77  67   Coll Niss      NW 679.31       Elago
+3 101966.66  53   Prof Volk       W 602.73      Belkin
+4  71760.52  26   Prof Hond      NW 653.90      Belkin
+5 124202.78  46   Coll Opel       C 627.27 No Response
+6  36716.54  46   Prof Chry      SE 461.72       Elago
+\end{verbatim}
+
+\hypertarget{check-duplicate-observations}{%
+\subsection{Check duplicate
+observations}\label{check-duplicate-observations}}
+
+\begin{verbatim}
+[1] 0
+\end{verbatim}
+
+\hypertarget{correlation-between-variables}{%
+\subsection{Correlation between
+variables}\label{correlation-between-variables}}
+
+\begin{verbatim}
+            salary         age      credit
+salary 1.000000000 0.006923108 0.794831141
+age    0.006923108 1.000000000 0.004495574
+credit 0.794831141 0.004495574 1.000000000
+\end{verbatim}
+
+\hypertarget{are-missing-values-at-random}{%
+\subsubsection{Are missing values at
+random?}\label{are-missing-values-at-random}}
+
+A method I use is a shadow matrix, in which the data-set consists of
+indicator features where a 0 is given if a value is present, and 1 if it
+isn't. Correlating these with each other and the original data can help
+determine if features tend to be missing together (missing at random -
+MAR) or not (missing completely at random - MCAR).
+
+I selected the features with numerical values, then their correlations
+were verified.
+
+\begin{verbatim}
+       No Response
+salary  0.08712544
+age     0.00154928
+credit  0.05358501
+\end{verbatim}
+
+The correlations shows that they are missing at random.
+
+\hypertarget{distributions-of-the-variables}{%
+\subsection{Distributions of the
+variables}\label{distributions-of-the-variables}}
+
+\hypertarget{data-frame-summary}{%
+\subsubsection{Data Frame Summary}\label{data-frame-summary}}
+
+\textbf{data}\\
+\textbf{Dimensions:} 15000 x 7\\
+\textbf{Duplicates:} 0
+
+\begin{longtable}[]{@{}llllll@{}}
+\toprule
+\begin{minipage}[b]{0.04\columnwidth}\raggedright
+No\strut
+\end{minipage} & \begin{minipage}[b]{0.09\columnwidth}\raggedright
+Variable\strut
+\end{minipage} & \begin{minipage}[b]{0.26\columnwidth}\raggedright
+Stats / Values\strut
+\end{minipage} & \begin{minipage}[b]{0.19\columnwidth}\raggedright
+Freqs (\% of Valid)\strut
+\end{minipage} & \begin{minipage}[b]{0.18\columnwidth}\raggedright
+Graph\strut
+\end{minipage} & \begin{minipage}[b]{0.08\columnwidth}\raggedright
+Missing\strut
+\end{minipage}\tabularnewline
+\midrule
+\endhead
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+1\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+salary\\
+{[}numeric{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+Mean (sd) : 87233.6 (37925.2)\\
+min \textless{} med \textless{} max:\\
+19582.9 \textless{} 87244 \textless{} 161748\\
+IQR (CV) : 65426.1 (0.4)\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+14757 distinct values\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0904.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+2\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+age\\
+{[}integer{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+Mean (sd) : 49.8 (17.6)\\
+min \textless{} med \textless{} max:\\
+20 \textless{} 50 \textless{} 80\\
+IQR (CV) : 30 (0.4)\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+61 distinct values\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0905.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+3\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+elevel\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. Prof\\
+2. Coll\\
+3. HSch\\
+4. Mast\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+6584 (43.9\%)\\
+5416 (36.1\%)\\
+1991 (13.3\%)\\
+1009 ( 6.7\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0906.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+4\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+car\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. Volk\\
+2. Hond\\
+3. Ford\\
+4. Daci\\
+5. BMW\\
+6. Kia\\
+7. Rena\\
+8. Audi\\
+9. Toyo\\
+10. Chry\\
+{[} 10 others {]}\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+1293 ( 8.6\%)\\
+1121 ( 7.5\%)\\
+1082 ( 7.2\%)\\
+1076 ( 7.2\%)\\
+966 ( 6.4\%)\\
+863 ( 5.8\%)\\
+757 ( 5.0\%)\\
+686 ( 4.6\%)\\
+661 ( 4.4\%)\\
+658 ( 4.4\%)\\
+5837 (38.9\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0907.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+5\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+zipcode\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. SE\\
+2. W\\
+3. N\\
+4. NW\\
+5. E\\
+6. SW\\
+7. NE\\
+8. C\\
+9. EC\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+1709 (11.4\%)\\
+1707 (11.4\%)\\
+1688 (11.2\%)\\
+1681 (11.2\%)\\
+1670 (11.1\%)\\
+1662 (11.1\%)\\
+1642 (10.9\%)\\
+1626 (10.8\%)\\
+1615 (10.8\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0908.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+6\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+credit\\
+{[}numeric{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+Mean (sd) : 638.9 (86.7)\\
+min \textless{} med \textless{} max:\\
+423.7 \textless{} 638.3 \textless{} 849\\
+IQR (CV) : 125.9 (0.1)\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+11999 distinct values\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0909.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+7\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+brand\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. No Response\\
+2. Belkin\\
+3. Elago\strut
+\end{minipage} & \begin{minipage}[t]{0.19\columnwidth}\raggedright
+5000 (33.3\%)\\
+4652 (31.0\%)\\
+5348 (35.6\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0910.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\bottomrule
+\end{longtable}
+
+\hypertarget{remove-no-response-observations-in-brand-variable}{%
+\section{\texorpdfstring{Remove \textbf{No Response} observations in
+brand
+variable}{Remove No Response observations in brand variable}}\label{remove-no-response-observations-in-brand-variable}}
+
+\hypertarget{comparing-some-variables-with-and-without-no-response}{%
+\subsection{\texorpdfstring{Comparing some variables with and without
+\textbf{No
+Response}}{Comparing some variables with and without No Response}}\label{comparing-some-variables-with-and-without-no-response}}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{l|r|r|r|r|r|r}
+\hline
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{With 'No Response'} & \multicolumn{3}{c}{Without 'No Response'} \\
+\cline{2-4} \cline{5-7}
+  & Min & Max & Median & Min & Max & Median\\
+\hline
+salary & 19583.0 & 161748 & 87244.0 & 20000.0 & 150000 & 84969.0\\
+\hline
+age & 20.0 & 80 & 50.0 & 20.0 & 80 & 50.0\\
+\hline
+credit & 423.7 & 849 & 638.9 & 423.7 & 849 & 635.5\\
+\hline
+\end{tabular}
+\end{table}
+
+\hypertarget{correlation}{%
+\subsection{Correlation}\label{correlation}}
+
+\begin{verbatim}
+            salary         age      credit
+salary 1.000000000 0.007025207 0.799999892
+age    0.007025207 1.000000000 0.002744687
+credit 0.799999892 0.002744687 1.000000000
+\end{verbatim}
+
+\hypertarget{distributions-of-the-variables-1}{%
+\subsection{Distributions of the
+variables}\label{distributions-of-the-variables-1}}
+
+\hypertarget{data-frame-summary-1}{%
+\subsubsection{Data Frame Summary}\label{data-frame-summary-1}}
+
+\textbf{dataSet}\\
+\textbf{Dimensions:} 10000 x 7\\
+\textbf{Duplicates:} 0
+
+\begin{longtable}[]{@{}llllll@{}}
+\toprule
+\begin{minipage}[b]{0.04\columnwidth}\raggedright
+No\strut
+\end{minipage} & \begin{minipage}[b]{0.09\columnwidth}\raggedright
+Variable\strut
+\end{minipage} & \begin{minipage}[b]{0.26\columnwidth}\raggedright
+Stats / Values\strut
+\end{minipage} & \begin{minipage}[b]{0.18\columnwidth}\raggedright
+Freqs (\% of Valid)\strut
+\end{minipage} & \begin{minipage}[b]{0.18\columnwidth}\raggedright
+Graph\strut
+\end{minipage} & \begin{minipage}[b]{0.08\columnwidth}\raggedright
+Missing\strut
+\end{minipage}\tabularnewline
+\midrule
+\endhead
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+1\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+salary\\
+{[}numeric{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+Mean (sd) : 84897.3 (37709.8)\\
+min \textless{} med \textless{} max:\\
+20000 \textless{} 84968.9 \textless{} 150000\\
+IQR (CV) : 65059 (0.4)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+9757 distinct values\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0911.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+2\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+age\\
+{[}integer{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+Mean (sd) : 49.8 (17.6)\\
+min \textless{} med \textless{} max:\\
+20 \textless{} 50 \textless{} 80\\
+IQR (CV) : 30 (0.4)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+61 distinct values\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0912.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+3\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+elevel\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. Prof\\
+2. Coll\\
+3. HSch\\
+4. Mast\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+4404 (44.0\%)\\
+3497 (35.0\%)\\
+1435 (14.3\%)\\
+664 ( 6.6\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0913.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+4\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+car\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. Volk\\
+2. Hond\\
+3. Ford\\
+4. Daci\\
+5. BMW\\
+6. Kia\\
+7. Rena\\
+8. Audi\\
+9. Toyo\\
+10. Chry\\
+{[} 10 others {]}\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+846 ( 8.5\%)\\
+759 ( 7.6\%)\\
+719 ( 7.2\%)\\
+740 ( 7.4\%)\\
+632 ( 6.3\%)\\
+643 ( 6.4\%)\\
+555 ( 5.5\%)\\
+443 ( 4.4\%)\\
+422 ( 4.2\%)\\
+446 ( 4.5\%)\\
+3795 (38.0\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0914.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+5\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+zipcode\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. SE\\
+2. W\\
+3. N\\
+4. NW\\
+5. E\\
+6. SW\\
+7. NE\\
+8. C\\
+9. EC\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+1167 (11.7\%)\\
+1144 (11.4\%)\\
+1103 (11.0\%)\\
+1113 (11.1\%)\\
+1125 (11.2\%)\\
+1091 (10.9\%)\\
+1094 (10.9\%)\\
+1097 (11.0\%)\\
+1066 (10.7\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0915.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+6\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+credit\\
+{[}numeric{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+Mean (sd) : 635.6 (87.3)\\
+min \textless{} med \textless{} max:\\
+423.7 \textless{} 635.5 \textless{} 849\\
+IQR (CV) : 126.9 (0.1)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+8658 distinct values\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0916.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.04\columnwidth}\raggedright
+7\strut
+\end{minipage} & \begin{minipage}[t]{0.09\columnwidth}\raggedright
+brand\\
+{[}factor{]}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+1. Belkin\\
+2. Elago\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+4652 (46.5\%)\\
+5348 (53.5\%)\strut
+\end{minipage} & \begin{minipage}[t]{0.18\columnwidth}\raggedright
+\includegraphics{/tmp/ds0917.png}\strut
+\end{minipage} & \begin{minipage}[t]{0.08\columnwidth}\raggedright
+0\\
+(0\%)\strut
+\end{minipage}\tabularnewline
+\bottomrule
+\end{longtable}
+
+\hypertarget{results}{%
+\section{Results}\label{results}}
+
+\includegraphics{final_report_files/figure-latex/unnamed-chunk-13-1.pdf}
+
+\includegraphics{final_report_files/figure-latex/unnamed-chunk-14-1.pdf}
+
+\hypertarget{model-hypothesis-testing}{%
+\subsection{Model Hypothesis Testing}\label{model-hypothesis-testing}}
+
+The null hypothesis (\(H_0\)): age and educational level don't affect
+salary, and the alternative hypothesis (\(H_1\)): age or educational
+level do affect the salary amount.
+
+~
+
+salary
+
+Predictors
+
+Estimates
+
+Conf. Int (95\%)
+
+P-Value
+
+Intercept
+
+72345.26
+
+70676.97~--~74013.55
+
+\textless0.001
+
+Age
+
+4.75
+
+-24.93~--~34.44
+
+0.754
+
+College Degree
+
+36160.17
+
+34977.33~--~37343.00
+
+\textless0.001
+
+High School Degree
+
+-31503.43
+
+-33090.80~--~-29916.06
+
+\textless0.001
+
+Master's Degree
+
+63112.91
+
+60938.73~--~65287.09
+
+\textless0.001
+
+Observations
+
+10000
+
+R2 / R2 adjusted
+
+0.501 / 0.501
+
+\includegraphics{final_report_files/figure-latex/unnamed-chunk-16-1.pdf}
+
+\hypertarget{conclusion}{%
+\section{Conclusion}\label{conclusion}}
+
+Age and salary are uniformly distributed and credit is normally
+distributed. Salary and credit have a high correlation (\(\rho\) =
+0.795). They are also correlated with educational level, that is, people
+with a high level of education receive high salary and credit in banks
+and people with a low level of education receive low salary and credit.
+
+There are more people with \textbf{Professional Diploma}, followed by
+\textbf{College Degree}, \textbf{High School Degree or lower}, finnally,
+\textbf{Master's Degree or Higher}. Age at educational level is equally
+distributed.
+
+Older people and people with intermediate income are associated with the
+\(\color{#E31A1C}{\text{Belkin}}\) brand and younger people and people
+with low or high income are associated with the
+\(\color{#6A3D9A}{\text{Elago}}\) brand.
+
+\end{document}
