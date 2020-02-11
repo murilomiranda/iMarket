@@ -38,13 +38,16 @@ library(forcats)
 library(dplyr)
 library(ggplot2)
 library(RColorBrewer)
-
+library(doParallel)
 library(caret)
 ```
 
 
 ```{r, message = FALSE, echo=FALSE}
 colors <- brewer.pal(12, "Paired")
+
+cl <- makeCluster(2)
+registerDoParallel(cl)
 ```
 
 # Loading data
@@ -232,15 +235,127 @@ kable(head(nearZeroVar(dataSetTransformed, saveMetrics= TRUE))) %>%
 All variables do not have zero-variance, although some variables associated with car models have near zero-variance.
 
 
-We also test linear dependency between/among variables. For each linear combination, one variable will be removed.
+We also test linear dependency among variables. For each linear combination, one variable will be removed.
 
 ```{r}
 # Linear Dependencies
 (linearDepend <- findLinearCombos(dataSetTransformed))
 
 dataSetTransformed <- dataSetTransformed[, -linearDepend$remove]
+
+# convert brand variable into factors
+dataSetTransformed$brand <- ifelse(dataSetTransformed$brand == 0, 'Belkin', 'Elago')
+dataSetTransformed$brand <- as.factor(dataSetTransformed$brand)
 ```
 
 The function shows that there are two linear combinations and indicates that we should remove two variables (Opel car model and East-Central Europe zipcode).
+
+
+# Splitting data using caret
+We will use createDataPartition() to split our training data into two sets : 75% and 25%.
+
+```{r}
+# Spliting training set into two parts based on outcome: 75% and 25%
+index <- createDataPartition(dataSetTransformed$brand, p = 0.75, list = FALSE)
+trainSet <- dataSetTransformed[ index,]
+testSet <- dataSetTransformed[-index,]
+```
+
+# Feature selection
+Now we will be using Recursive Feature elimination (RFE) which is a wrapper method to find the best subset of features to use for modeling.
+
+```{r, message=FALSE}
+# Feature selection using rfe in caret
+subsets <- c(1:5, 10, 15, 20, 25)
+rfControl <- rfeControl(functions = rfFuncs, method = "repeatedcv", 
+                        repeats = 3, verbose = FALSE)
+#lmControl <- rfeControl(functions = lmFuncs, method = "repeatedcv", 
+#                        repeats = 3, verbose = FALSE)
+
+predictors <- names(dataSetTransformed)[!names(dataSetTransformed) %in% 'brand']
+
+rfProfile <- rfe(dataSetTransformed[, predictors], dataSetTransformed[,'brand'], 
+                 sizes = subsets, rfeControl = rfControl)
+rfProfile
+
+#lmProfile <- rfe(dataSetTransformed[, predictors], dataSetTransformed[,'brand'], 
+#                 sizes = subsets, rfeControl = lmControl)
+#lmProfile
+
+trellis.par.set(caretTheme())
+plot(rfProfile, type = c("g", "o"))
+```
+
+# Training models
+### Train Control
+```{r}
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 1, 
+                           classProbs = TRUE, summaryFunction = twoClassSummary)
+```
+
+### Parameter Tuning
+```{r}
+rfGrid <- expand.grid(mtry = c(1, 2, 3, 4, 5))
+```
+
+## Decision Tree
+```{r}
+set.seed(123)
+dtFit <- train(brand ~ ., trainSet, method = "C5.0", trControl = fitControl, 
+               tuneLength = 2, metric = "ROC")
+
+summary(dtFit)
+ggplot(dtFit)
+```
+
+```{r}
+dtBrand <- predict(dtFit, newdata = testSet)
+dtProbs <- predict(dtFit, newdata = testSet, type = "prob")
+
+confusionMatrix(dtBrand, testSet$brand)
+```
+
+### Variable Importance
+```{r}
+plot(varImp(dtFit))
+```
+
+## Random Forest
+```{r}
+set.seed(123)
+rfFit <- train(brand ~ ., trainSet, method = "rf", trControl = fitControl, 
+               tuneGrid = rfGrid, metric = "ROC")
+
+rfFit
+ggplot(rfFit)
+```
+
+```{r}
+rfBrand <- predict(rfFit, newdata = testSet)
+rfProbs <- predict(rfFit, newdata = testSet, type = "prob")
+
+confusionMatrix(rfBrand, testSet$brand)
+```
+
+### Variable Importance
+```{r}
+plot(varImp(rfFit))
+```
+
+## Comparing models
+```{r}
+resamps <- resamples((list(dt = dtFit, rf = rfFit)))
+
+summary(resamps)
+xyplot(resamps,what = "BlandAltman")
+
+diffs <- diff(resamps)
+summary(diffs)
+```
+
+
+```{r}
+stopCluster(cl)
+```
 
 <br>
