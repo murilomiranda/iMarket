@@ -45,9 +45,6 @@ library(caret)
 
 ```{r, message = FALSE, echo=FALSE}
 colors <- brewer.pal(12, "Paired")
-
-cl <- makeCluster(2)
-registerDoParallel(cl)
 ```
 
 # Loading data
@@ -121,7 +118,7 @@ hgram <- ggplot(dataSet, aes(salary, fill = brand)) + geom_histogram(bins = 100)
     y = "",
     title = "Salary distribution by brand preference",
     subtitle = "Salaries are expressed in yearly thousands of euros",
-    caption = "Data source: Ubiqum 2019"
+    caption = "Source: Ubiqum 2020 (Fake Data)"
   ) +
   geom_text(x = 80000, y = 70, label = "Belkin", color = "white") +
   geom_text(x = 40000, y = 30, label = "Elago", color = "white")
@@ -141,7 +138,7 @@ hgram <- ggplot(dataSet, aes(age, fill = brand)) + geom_histogram(bins = 31) +
     y = "",
     title = "Age distribution by brand preference",
     subtitle = " ",
-    caption = "Data source: Ubiqum 2019"
+    caption = "Source: Ubiqum 2020 (Fake Data)"
   ) +
   geom_text(x = 65, y = 220, label = "Belkin", color = "white") +
   geom_text(x = 30, y = 100, label = "Elago", color = "white")
@@ -184,7 +181,7 @@ dataSet %>%
     y = "",
     title = "Salary distribution by educational level and age separated by brand preference",
     subtitle = "High educational level helps to earn more, age doesn't",
-    caption = "Data source: Ubiqum 2019"
+    caption = "Source: Ubiqum 2020 (Fake Data)"
   ) +
   facet_grid(. ~ brand + elevel, labeller = global_labeller) + 
   theme(panel.background = element_rect(fill = "white", colour = "white"),
@@ -204,142 +201,89 @@ Older people and people with intermediate income are associated with the $\color
 
 
 # Preprocessing 2
-As salary, credit and age have different units and variance, we will scale and center the numerical data by using the convenient preprocess() in **caret**.
+
+Some variables have different units and variance, so we will scale and center the numerical data by using the convenient preprocess() in **caret**. We will also remove variables that only have a single unique value (i.e. a “zero-variance predictor”) and have high correlation. For many models (excluding tree-based models), this may cause the model to crash or the fit to be unstable.
 
 ```{r}
 # Centering and scaling numerical columns
-preProcValues <- preProcess(dataSet, method = c("center","scale"))
+preProcValues <- preProcess(dataSet, method = c("center","scale", "zv", "corr"))
 
 dataSetProcessed <- predict(preProcValues, dataSet)
 ```
 
-**Caret** assumes that all of the data are numeric, i.e. factors have been converted to dummy variables via model.matrix, dummyVars or other means. But first, we will convert brand variable to numeric (0: Belkin and 1: Elago).
-
-```{r}
-dataSetProcessed$brand <- ifelse(dataSetProcessed$brand == 'Belkin', 0, 1)
-
-# Converting every categorical variable to numerical using dummy variables
-dmy <- dummyVars(" ~ .", data = dataSetProcessed)
-
-dataSetTransformed <- data.frame(predict(dmy, newdata = dataSetProcessed))
-```
-
-The data generating mechanism can create predictors that only have a single unique value (i.e. a “zero-variance predictor”). For many models (excluding tree-based models), this may cause the model to crash or the fit to be unstable. Here, we verify whether there are zero-variance predictors.
-
-```{r}
-# Identification of near zero variance predictors
-kable(head(nearZeroVar(dataSetTransformed, saveMetrics= TRUE))) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
-```
-
-All variables do not have zero-variance, although some variables associated with car models have near zero-variance.
-
-
-We also test linear dependency among variables. For each linear combination, one variable will be removed.
-
-```{r}
-# Linear Dependencies
-(linearDepend <- findLinearCombos(dataSetTransformed))
-
-dataSetTransformed <- dataSetTransformed[, -linearDepend$remove]
-
-# convert brand variable into factors
-dataSetTransformed$brand <- ifelse(dataSetTransformed$brand == 0, 'Belkin', 'Elago')
-dataSetTransformed$brand <- as.factor(dataSetTransformed$brand)
-```
-
-The function shows that there are two linear combinations and indicates that we should remove two variables (Opel car model and East-Central Europe zipcode).
-
-
-# Splitting data using caret
-We will use createDataPartition() to split our training data into two sets : 75% and 25%.
+### Splitting data using caret
+We will use createDataPartition() to split our data into two sets: 75% in the training set and 25% in the testing set.
 
 ```{r}
 # Spliting training set into two parts based on outcome: 75% and 25%
-index <- createDataPartition(dataSetTransformed$brand, p = 0.75, list = FALSE)
-trainSet <- dataSetTransformed[ index,]
-testSet <- dataSetTransformed[-index,]
+index <- createDataPartition(dataSetProcessed$brand, p = 0.75, list = FALSE)
+trainSet <- dataSetProcessed[ index,]
+testSet <- dataSetProcessed[-index,]
 ```
 
-# Feature selection
-Now we will be using Recursive Feature elimination (RFE) which is a wrapper method to find the best subset of features to use for modeling.
-
-```{r, message=FALSE}
-# Feature selection using rfe in caret
-subsets <- c(1:5, 10, 15, 20, 25)
-rfControl <- rfeControl(functions = rfFuncs, method = "repeatedcv", 
-                        repeats = 3, verbose = FALSE)
-#lmControl <- rfeControl(functions = lmFuncs, method = "repeatedcv", 
-#                        repeats = 3, verbose = FALSE)
-
-predictors <- names(dataSetTransformed)[!names(dataSetTransformed) %in% 'brand']
-
-rfProfile <- rfe(dataSetTransformed[, predictors], dataSetTransformed[,'brand'], 
-                 sizes = subsets, rfeControl = rfControl)
-rfProfile
-
-#lmProfile <- rfe(dataSetTransformed[, predictors], dataSetTransformed[,'brand'], 
-#                 sizes = subsets, rfeControl = lmControl)
-#lmProfile
-
-trellis.par.set(caretTheme())
-plot(rfProfile, type = c("g", "o"))
-```
-
-# Training models
+## Training models
 ### Train Control
+10-fold cross validation with one repetition. 
+
 ```{r}
 fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 1, 
                            classProbs = TRUE, summaryFunction = twoClassSummary)
 ```
 
-### Parameter Tuning
-```{r}
-rfGrid <- expand.grid(mtry = c(1, 2, 3, 4, 5))
-```
-
 ## Decision Tree
+Build a model using a decision tree, C5.0,  on the training set with 10-fold cross validation and an Automatic Tuning Grid with a tuneLength of 2. 
+
 ```{r}
 set.seed(123)
+cl <- makeCluster(2)
+registerDoParallel(cl)
 dtFit <- train(brand ~ ., trainSet, method = "C5.0", trControl = fitControl, 
                tuneLength = 2, metric = "ROC")
-
-summary(dtFit)
-ggplot(dtFit)
+stopCluster(cl)
+#summary(dtFit)
+#ggplot(dtFit)
 ```
 
 ```{r}
 dtBrand <- predict(dtFit, newdata = testSet)
-dtProbs <- predict(dtFit, newdata = testSet, type = "prob")
+#dtProbs <- predict(dtFit, newdata = testSet, type = "prob")
 
 confusionMatrix(dtBrand, testSet$brand)
 ```
 
-### Variable Importance
-```{r}
-plot(varImp(dtFit))
-```
-
 ## Random Forest
+Build a decision tree using Random Forest with 10-fold cross validation and manually tune 5 different mtry values.
+
+### Parameter Tuning
+Manually tune 5 different mtry values (2, 3, 4, 5, 6).
+
+```{r}
+rfGrid <- expand.grid(mtry = c(2, 3, 4, 5, 6))
+```
 ```{r}
 set.seed(123)
+cl <- makeCluster(2)
+registerDoParallel(cl)
 rfFit <- train(brand ~ ., trainSet, method = "rf", trControl = fitControl, 
                tuneGrid = rfGrid, metric = "ROC")
-
-rfFit
-ggplot(rfFit)
+stopCluster(cl)
+#rfFit
+#ggplot(rfFit)
 ```
 
 ```{r}
 rfBrand <- predict(rfFit, newdata = testSet)
-rfProbs <- predict(rfFit, newdata = testSet, type = "prob")
+#rfProbs <- predict(rfFit, newdata = testSet, type = "prob")
 
 confusionMatrix(rfBrand, testSet$brand)
 ```
 
 ### Variable Importance
 ```{r}
-plot(varImp(rfFit))
+par(mfrow=c(1,2))
+
+plot(varImp(dtFit), main = "C5.0")
+plot(varImp(rfFit), main = "Random Forest")
 ```
 
 ## Comparing models
@@ -347,15 +291,111 @@ plot(varImp(rfFit))
 resamps <- resamples((list(dt = dtFit, rf = rfFit)))
 
 summary(resamps)
-xyplot(resamps,what = "BlandAltman")
+#xyplot(resamps,what = "BlandAltman")
 
 diffs <- diff(resamps)
 summary(diffs)
 ```
 
+# Predict **No Response** in brand variable
 
 ```{r}
-stopCluster(cl)
+noRespProcessed <- predict(preProcValues, noResponse)
+newBrand <- predict(rfFit, newdata = noRespProcessed)
+
+newBrand <- cbind(noResponse[, -7], brand = newBrand)
 ```
+
+### Distributions of the variables
+
+```{r, echo=FALSE, results='asis'}
+dfSummary(newBrand, plain.ascii = FALSE, style = "grid", 
+          graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp")
+```
+
+# Exploratory Data Analysis
+
+```{r, echo=FALSE}
+hgram <- ggplot(newBrand, aes(salary, fill = brand)) + geom_histogram(bins = 100) +
+  scale_fill_manual(values = c(colors[6], colors[10])) +
+  geom_vline(aes(xintercept = median(data$salary)), linetype = "dashed") +
+  labs(
+    x = "",
+    y = "",
+    title = "Salary distribution by brand preference",
+    subtitle = "Salaries are expressed in yearly thousands of euros",
+    caption = "Source: Ubiqum 2020 (Fake Data)"
+  ) +
+  geom_text(x = 80000, y = 33, label = "Belkin", color = "white") +
+  geom_text(x = 40000, y = 15, label = "Elago", color = "white")
+ 
+hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
+              plot.title = element_text(hjust = -0.10),
+              plot.subtitle = element_text(hjust = -0.11),
+              legend.position = "none")
+```
+
+```{r, echo=FALSE}
+hgram <- ggplot(newBrand, aes(age, fill = brand)) + geom_histogram(bins = 31) +
+  scale_fill_manual(values = c(colors[6], colors[10])) +
+  geom_vline(aes(xintercept = median(dataSet$age)), linetype = "dashed") +
+  labs(
+    x = "",
+    y = "",
+    title = "Age distribution by brand preference",
+    subtitle = " ",
+    caption = "Source: Ubiqum 2020 (Fake Data)"
+  ) +
+  geom_text(x = 65, y = 100, label = "Belkin", color = "white") +
+  geom_text(x = 30, y = 50, label = "Elago", color = "white")
+ 
+hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
+              plot.title = element_text(hjust = -0.15),
+              plot.subtitle = element_text(hjust = -0.17),
+              legend.position = "none")
+```
+
+### Model Hypothesis Testing
+
+The null hypothesis ($H_0$): Salary of customers are equal between brand, and the alternative hypothesis ($H_1$): Salary of customers are diferent between brand.
+
+```{r, echo=FALSE}
+model <- t.test(salary ~ brand, data = newBrand)
+
+model
+```
+
+In the result above: t is the Student t-test statistics value (t = 6.399), df is the degrees of freedom (df= 4236.4), p-value is the significance level of the t-test (p-value < 0.05). The confidence interval (conf.int) of the mean differences at 95% is also shown (conf.int= [4822.94, 9083.94]); and finally, we have the means of the two groups of samples (average salary of customers who perfer Belkin = 88595.16, average salary of customers who perfer Elago = 95548.60). The p-value of the test is lower than 0.05. We can then reject the null hypothesis and conclude that people who prefer Elago earn more money than people who prefer Belkin.
+
+
+```{r,echo=FALSE}
+hgram <- ggplot(newBrand, aes(brand, salary, fill = brand)) + geom_boxplot() +
+  scale_fill_manual(values = c(colors[6], colors[10])) +
+  labs(
+    x = "",
+    y = "",
+    title = "Salary distribution by brand preference",
+    subtitle = " ",
+    caption = "Source: Ubiqum 2020 (Fake Data)"
+  )
+#+
+#  geom_text(x = 65, y = 100, label = "Belkin", color = "white") +
+#  geom_text(x = 30, y = 50, label = "Elago", color = "white")
+ 
+hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
+              plot.title = element_text(hjust = -0.15),
+              plot.subtitle = element_text(hjust = -0.17),
+              legend.position = "none")
+```
+
+### Conclusion
+
+There is no difference between models. On average, the ROC for decision tree is 0.858 and for Random forest is 0.854 (p = 0.093). Decision tree C5.0 shows that salary, age and Master educational level are the most important variables. Random forest also shows that salary and age are the most important variables.
+
+Finally, we decided to use the decision tree C5.0 to predict the preferences of new customers because this method seems more parsimonious as it only uses three variables (salary, age and educational level), while the other uses all variables.
+
+We indicate Elago, altough Elago has only 2% less customers than Belkin. On average, their customers earn more money. Therefore, they can buy our products.
+
+
 
 <br>
