@@ -234,12 +234,14 @@ fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 1,
 Build a model using a decision tree, C5.0,  on the training set with 10-fold cross validation and an Automatic Tuning Grid with a tuneLength of 2. 
 
 ```{r}
-set.seed(123)
-cl <- makeCluster(2)
-registerDoParallel(cl)
-dtFit <- train(brand ~ ., trainSet, method = "C5.0", trControl = fitControl, 
-               tuneLength = 2, metric = "ROC")
-stopCluster(cl)
+# set.seed(123)
+# cl <- makeCluster(2)
+# registerDoParallel(cl)
+# dtFit <- train(brand ~ ., trainSet, method = "C5.0", trControl = fitControl, 
+#                tuneLength = 2, metric = "ROC")
+# stopCluster(cl)
+# saveRDS(dtFit, "decisionTreeC5.RDS")
+dtFit <- readRDS("decisionTreeC5.RDS")
 #summary(dtFit)
 #ggplot(dtFit)
 ```
@@ -261,12 +263,14 @@ Manually tune 5 different mtry values (2, 3, 4, 5, 6).
 rfGrid <- expand.grid(mtry = c(2, 3, 4, 5, 6))
 ```
 ```{r}
-set.seed(123)
-cl <- makeCluster(2)
-registerDoParallel(cl)
-rfFit <- train(brand ~ ., trainSet, method = "rf", trControl = fitControl, 
-               tuneGrid = rfGrid, metric = "ROC")
-stopCluster(cl)
+# set.seed(123)
+# cl <- makeCluster(2)
+# registerDoParallel(cl)
+# rfFit <- train(brand ~ ., trainSet, method = "rf", trControl = fitControl, 
+#                tuneGrid = rfGrid, metric = "ROC")
+# stopCluster(cl)
+# saveRDS(rfFit, "randomForest.RDS")
+rfFit <- readRDS("randomForest.RDS")
 #rfFit
 #ggplot(rfFit)
 ```
@@ -297,26 +301,31 @@ diffs <- diff(resamps)
 summary(diffs)
 ```
 
-# Predict **No Response** in brand variable
+# Combining all surveys (Complete and Incomplete)
+
+## Predict brand variable for incomplete survey
+ROC shows that decision tree is better than random forest (diff = 0.006, p < 0.05), but sensitivity and specificity are no statistically different (p = 0.290 and p = 0.106, respectively). Therefore, we use decision tree to predict the missing information in the survey.
 
 ```{r}
 noRespProcessed <- predict(preProcValues, noResponse)
-newBrand <- predict(rfFit, newdata = noRespProcessed)
+newBrand <- predict(dtFit, newdata = noRespProcessed)
 
 newBrand <- cbind(noResponse[, -7], brand = newBrand)
+
+newDataSet <- rbind(dataSet, newBrand)
 ```
 
 ### Distributions of the variables
 
 ```{r, echo=FALSE, results='asis'}
-dfSummary(newBrand, plain.ascii = FALSE, style = "grid", 
+dfSummary(newDataSet, plain.ascii = FALSE, style = "grid", 
           graph.magnif = 0.75, valid.col = FALSE, tmp.img.dir = "/tmp")
 ```
 
 # Exploratory Data Analysis
 
 ```{r, echo=FALSE}
-hgram <- ggplot(newBrand, aes(salary, fill = brand)) + geom_histogram(bins = 100) +
+hgram <- ggplot(newDataSet, aes(salary, fill = brand)) + geom_histogram(bins = 100) +
   scale_fill_manual(values = c(colors[6], colors[10])) +
   geom_vline(aes(xintercept = median(data$salary)), linetype = "dashed") +
   labs(
@@ -326,17 +335,17 @@ hgram <- ggplot(newBrand, aes(salary, fill = brand)) + geom_histogram(bins = 100
     subtitle = "Salaries are expressed in yearly thousands of euros",
     caption = "Source: Ubiqum 2020 (Fake Data)"
   ) +
-  geom_text(x = 80000, y = 33, label = "Belkin", color = "white") +
-  geom_text(x = 40000, y = 15, label = "Elago", color = "white")
+  geom_text(x = 80000, y = 100, label = "Belkin", color = "white") +
+  geom_text(x = 40000, y = 50, label = "Elago", color = "white")
  
 hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
-              plot.title = element_text(hjust = -0.10),
-              plot.subtitle = element_text(hjust = -0.11),
+              plot.title = element_text(hjust = -0.15),
+              plot.subtitle = element_text(hjust = -0.17),
               legend.position = "none")
 ```
 
 ```{r, echo=FALSE}
-hgram <- ggplot(newBrand, aes(age, fill = brand)) + geom_histogram(bins = 31) +
+hgram <- ggplot(newDataSet, aes(age, fill = brand)) + geom_histogram(bins = 31) +
   scale_fill_manual(values = c(colors[6], colors[10])) +
   geom_vline(aes(xintercept = median(dataSet$age)), linetype = "dashed") +
   labs(
@@ -346,8 +355,8 @@ hgram <- ggplot(newBrand, aes(age, fill = brand)) + geom_histogram(bins = 31) +
     subtitle = " ",
     caption = "Source: Ubiqum 2020 (Fake Data)"
   ) +
-  geom_text(x = 65, y = 100, label = "Belkin", color = "white") +
-  geom_text(x = 30, y = 50, label = "Elago", color = "white")
+  geom_text(x = 65, y = 300, label = "Belkin", color = "white") +
+  geom_text(x = 40, y = 200, label = "Elago", color = "white")
  
 hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
               plot.title = element_text(hjust = -0.15),
@@ -360,16 +369,16 @@ hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
 The null hypothesis ($H_0$): Salary of customers are equal between brand, and the alternative hypothesis ($H_1$): Salary of customers are diferent between brand.
 
 ```{r, echo=FALSE}
-model <- t.test(salary ~ brand, data = newBrand)
+model <- t.test(salary ~ brand, data = newDataSet)
 
 model
 ```
 
-In the result above: t is the Student t-test statistics value (t = 6.399), df is the degrees of freedom (df= 4236.4), p-value is the significance level of the t-test (p-value < 0.05). The confidence interval (conf.int) of the mean differences at 95% is also shown (conf.int= [4822.94, 9083.94]); and finally, we have the means of the two groups of samples (average salary of customers who perfer Belkin = 88595.16, average salary of customers who perfer Elago = 95548.60). The p-value of the test is lower than 0.05. We can then reject the null hypothesis and conclude that people who prefer Elago earn more money than people who prefer Belkin.
+In the result above: $t$ is the Student $t$-test statistics value ($t$ = -1.635), df is the degrees of freedom (df= 14200), p-value is the significance level of the $t$-test (p = 0.102). The confidence interval (conf.int) of the mean differences at 95% is also shown (conf.int= [-2207.222, 199.832]); and finally, we have the means of the two groups of samples (average salary of customers who perfer Belkin = 86716.46, average salary of customers who perfer Elago = 87720.15). The p-value of the test is greater than 0.05. We can then accept the null hypothesis and conclude that people who prefer Elago earn the same amount of money than people who prefer Belkin.
 
 
 ```{r,echo=FALSE}
-hgram <- ggplot(newBrand, aes(brand, salary, fill = brand)) + geom_boxplot() +
+hgram <- ggplot(newDataSet, aes(brand, salary, fill = brand)) + geom_boxplot() +
   scale_fill_manual(values = c(colors[6], colors[10])) +
   labs(
     x = "",
@@ -390,12 +399,9 @@ hgram + theme(panel.background = element_rect(fill = "white", colour = "white"),
 
 ### Conclusion
 
-There is no difference between models. On average, the ROC for decision tree is 0.858 and for Random forest is 0.854 (p = 0.093). Decision tree C5.0 shows that salary, age and Master educational level are the most important variables. Random forest also shows that salary and age are the most important variables.
+There is no big difference between models. On average, the ROC for decision tree is 0.859 and for Random forest is 0.853 (p = 0.009). Decision tree C5.0 shows that salary, age, some car models (BMW and Citroen) and Northeastern Europe region are the most important variables. Random forest also shows that salary and age are the most important variables.
 
-Finally, we decided to use the decision tree C5.0 to predict the preferences of new customers because this method seems more parsimonious as it only uses three variables (salary, age and educational level), while the other uses all variables.
+We decided to use the decision tree C5.0 to predict the missing information of preferences of customers because this method seems more parsimonious as it only uses three variables (salary, age and car model), while the other uses all variables.
 
-We indicate Elago, altough Elago has only 2% less customers than Belkin. On average, their customers earn more money. Therefore, they can buy our products.
+In conclusion, the customers prefer equally Elago and Belkin, although the customers who prefer Elago earn on average a bit more (\$87720 $\pm$ \$42973) than Belkin (\$86716 $\pm$ \$31685).
 
-
-
-<br>
